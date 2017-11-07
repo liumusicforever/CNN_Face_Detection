@@ -14,7 +14,7 @@ This repo implemented the [paper](https://www.cv-foundation.org/openaccess/conte
 # make sure detection.py is in program folder
 from  detection import Detector
 ```
-* Restore the pretrained model
+* Restore the pretrained model , [download_link](https://drive.google.com/file/d/170IlbvlBxrrtML_j3rmLFMDNIgX44Rgw/view?usp=sharing)
 
 ```python
 # given paths from both models to Detector , and It will load the model on 
