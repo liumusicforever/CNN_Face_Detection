@@ -56,9 +56,9 @@ class detect_12Net:
             
 
             #fully conv layer 1
-            self.w_fc1 = weight_variable([size[0]/2 * size[1]/2 * 16, 16],'w_fc1',lr_type = 'fc')
+            self.w_fc1 = weight_variable([int(size[0]/2 * size[1]/2 * 16), 16],'w_fc1',lr_type = 'fc')
             self.b_fc1 = bias_variable([16],'b_fc1')
-            self.pool1_flat = tf.reshape(self.pool1, [-1, size[0]/2 * size[1]/2 *16])
+            self.pool1_flat = tf.reshape(self.pool1, [-1, int(size[0]/2 * size[1]/2 *16)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool1_flat, self.w_fc1) + self.b_fc1)
             
 
@@ -102,9 +102,9 @@ class detect_24Net:
             
 
             #fully conv layer 1
-            self.w_fc1 = weight_variable([size[0]/2 * size[1]/2 * 64, 128],lr_type = 'fc')
+            self.w_fc1 = weight_variable([int(size[0]/2 * size[1]/2 * 64), 128],lr_type = 'fc')
             self.b_fc1 = bias_variable([128])
-            self.pool1_flat = tf.reshape(self.pool1, [-1, size[0]/2 * size[1]/2 *64])
+            self.pool1_flat = tf.reshape(self.pool1, [-1, int(size[0]/2 * size[1]/2 *64)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool1_flat, self.w_fc1) + self.b_fc1)
             
             
@@ -162,9 +162,9 @@ class detect_48Net:
 
 
             #fully conv layer 1
-            self.w_fc1 = weight_variable([size[0]/4 * size[1]/4 * 64, 256],lr_type = 'fc')
+            self.w_fc1 = weight_variable([int(size[0]/4 * size[1]/4 * 64), 256],lr_type = 'fc')
             self.b_fc1 = bias_variable([256])
-            self.pool2_flat = tf.reshape(self.pool2, [-1, size[0]/4 * size[1]/4 *64])
+            self.pool2_flat = tf.reshape(self.pool2, [-1, int(size[0]/4 * size[1]/4 *64)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool2_flat, self.w_fc1) + self.b_fc1)
             
             
@@ -206,9 +206,9 @@ class calib_12Net:
             self.pool1 =  max_pool(self.conv1, 3, 2)
 
             #fc layer 1
-            self.w_fc1 =  weight_variable([size[0]//2 * size[1]//2 * 16, 128],"w2")
+            self.w_fc1 =  weight_variable([int(size[0]//2 * size[1]//2 * 16), 128],"w2")
             self.b_fc1 =  bias_variable([128],"b2")
-            self.pool1_reshaped = tf.reshape(self.pool1, [-1, size[0]//2 * size[1]//2 * 16])
+            self.pool1_reshaped = tf.reshape(self.pool1, [-1, int(size[0]//2 * size[1]//2 * 16)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool1_reshaped, self.w_fc1) + self.b_fc1)
 
             #fc layer2
@@ -243,9 +243,9 @@ class calib_24Net:
             self.pool1 =  max_pool(self.conv1, 3, 2)
 
             #fc layer 1
-            self.w_fc1 =  weight_variable([size[0]//2 * size[1]//2 * 32, 64],"w2")
+            self.w_fc1 =  weight_variable([int(size[0]//2 * size[1]//2 * 32), 64],"w2")
             self.b_fc1 =  bias_variable([64],"b2")
-            self.pool1_reshaped = tf.reshape(self.pool1, [-1, size[0]//2 * size[1]//2  * 32])
+            self.pool1_reshaped = tf.reshape(self.pool1, [-1, int(size[0]//2 * size[1]//2  * 32)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool1_reshaped, self.w_fc1) + self.b_fc1)
 
             #fc layer2
@@ -288,9 +288,9 @@ class calib_48Net:
             self.conv2 = tf.nn.relu(conv2d(self.pool1, self.w_conv2, 1) + self.b_conv2)
 
             #fc layer 1
-            self.w_fc1 =  weight_variable([size[0]//2 * size[1]//2 * 64, 256],"w3")
+            self.w_fc1 =  weight_variable([int(size[0]//2 * size[1]//2 * 64), 256],"w3")
             self.b_fc1 =  bias_variable([256],"b3")
-            self.conv2_reshaped = tf.reshape(self.conv2, [-1, size[0]//2 * size[1]//2 * 64])
+            self.conv2_reshaped = tf.reshape(self.conv2, [-1, int(size[0]//2 * size[1]//2 * 64)])
             self.fc1 = tf.nn.relu(tf.matmul(self.conv2_reshaped, self.w_fc1) + self.b_fc1)
 
             #fc layer2
