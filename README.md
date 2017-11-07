@@ -56,7 +56,7 @@ bboxes = detector.predict(img,bboxes,net = 'net12',threshold = 0.9)
 ## Implementation Issue
 ### 12-net and 24-net is too small ?
 When I was training models , **finding size of 12-net and 24-net was so hard to convergence** , maybe the size of network is too small to learn pattern , so I change network size of net12 and net24 to 48*48 finally. But still confuse about it !
-## Necessary for calibration network ?
+### Necessary for calibration network ?
 The accuracy of the calibration almost only 0.8 , **It result the calibration of bounding box after network may making mistake , and bounding box will be removed in next stage** , so sometimes I have better result without calibration net.
 
 
