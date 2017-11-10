@@ -2,7 +2,7 @@
 Implementation of "A Convolutional Neural Network Cascade for Face Detection "
 Paper : https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Li_A_Convolutional_Neural_2015_CVPR_paper.pdf
 Author : Dennis Liu
-Modify : 2017/11/07
+Modify : 2017/11/10
 
 Description :   Three important class use to detect img : 
                 Classifier : create the detection net 12,24,48 , and provide each net predict function
@@ -20,10 +20,12 @@ import model
 
 
 class Classifier:
-    def __init__(self,model_path):
+    def __init__(self,model_path,sizes = [12,24,48]):
+        self.sizes = sizes
         # load network
-        self.net_12 = model.detect_12Net(is_train = False)  
-        self.net_24 = model.detect_24Net(is_train = False)
+        self.net_12 = model.detect_12Net(is_train = False,size = (sizes[0],sizes[0],3))  
+        print '111'
+        self.net_24 = model.detect_24Net(is_train = False,size = (sizes[1],sizes[1],3))
         self.net_48 = model.detect_48Net(is_train = False)
         # create session
         self.sess = tf.Session()
@@ -37,30 +39,61 @@ class Classifier:
         # Restore model from disk.
         saver.restore(self.sess, model_path)
     def net_12_predict(self,data,threshold = 0.5):
-        last_output = tf.nn.sigmoid(self.net_12.fc2)
-        predict = tf.concat([tf.to_float(tf.greater(last_output,threshold)),last_output],1)
-        result = self.sess.run(predict,feed_dict = {self.net_12.inputs : data})
+        # resize data to fit the size of net work
+        input_12 = np.array([cv2.resize(img,(self.sizes[0],self.sizes[0]))for img in data])
+        
+        # the class of prediction
+        max_idx = tf.to_float(tf.argmax( self.net_12.fc2,1))
+        # the confidence of predicted class
+        max_value = tf.reduce_max(tf.nn.softmax(self.net_12.fc2), axis=1)
+        # combine the result
+        predict = tf.stack([max_idx,max_value],1)
+
+        # forward 
+        result = self.sess.run(predict,feed_dict = {self.net_12.inputs : input_12})  
         return result
+
     def net_24_predict(self,data,threshold = 0.5):
-        net_12_fc = self.sess.run(self.net_12.fc1,feed_dict = {self.net_12.inputs :data})
-        last_output = tf.nn.sigmoid(self.net_24.fc2)
-        predict = tf.concat([tf.to_float(tf.greater(last_output,threshold)),last_output],1)
-        result = self.sess.run(predict,feed_dict = {self.net_24.inputs : data, self.net_24.from_12 : net_12_fc})
+        # resize data to fit the size of net work
+        input_12 = np.array([cv2.resize(img,(self.sizes[0],self.sizes[0]))for img in data])
+        input_24 = np.array([cv2.resize(img,(self.sizes[1],self.sizes[1]))for img in data])
+        
+        # get previous net output
+        net_12_fc = self.sess.run(self.net_12.fc1,feed_dict = {self.net_12.inputs :input_12})
+
+        max_idx = tf.to_float(tf.argmax( self.net_24.fc2,1))
+        max_value = tf.reduce_max(tf.nn.softmax(self.net_24.fc2), axis=1)
+        predict = tf.stack([max_idx,max_value],1)
+        
+        result = self.sess.run(predict,feed_dict = {self.net_24.inputs : input_24, self.net_24.from_12 : net_12_fc})
         return result
     def net_48_predict(self,data,threshold = 0.5):
-        net_12_fc = self.sess.run(self.net_12.fc1,feed_dict = {self.net_12.inputs :data})
-        net_24_fc = self.sess.run(self.net_24.concat1,feed_dict = {self.net_24.inputs : data, self.net_24.from_12 : net_12_fc})
-        last_output = tf.nn.sigmoid(self.net_48.fc2)
-        predict = tf.concat([tf.to_float(tf.greater(last_output,threshold)),last_output],1)
-        result = self.sess.run(predict,feed_dict = {self.net_48.inputs : data, self.net_48.from_24 : net_24_fc})
+        # resize data to fit the size of net work
+        input_12 = np.array([cv2.resize(img,(self.sizes[0],self.sizes[0]))for img in data])
+        input_24 = np.array([cv2.resize(img,(self.sizes[1],self.sizes[1]))for img in data])
+        input_48 = np.array([cv2.resize(img,(self.sizes[2],self.sizes[2]))for img in data])
+        
+        # get previous net output
+        net_12_fc = self.sess.run(self.net_12.fc1,feed_dict = {self.net_12.inputs :input_12})
+        net_24_fc = self.sess.run(self.net_24.concat1,feed_dict = {self.net_24.inputs : input_24, self.net_24.from_12 : net_12_fc})
+
+        # the class of prediction
+        max_idx = tf.to_float(tf.argmax( self.net_48.fc2,1))
+        # the confidence of predicted class
+        max_value = tf.reduce_max(tf.nn.softmax(self.net_48.fc2), axis=1)
+        # combine the result
+        predict = tf.stack([max_idx,max_value],1)
+
+        result = self.sess.run(predict,feed_dict = {self.net_48.inputs : input_48, self.net_48.from_24 : net_24_fc})
         return result
 
 class Aligner:
-    def __init__(self,model_path):
+    def __init__(self,model_path,sizes = [12,24,48]):
+        self.sizes = sizes
         # load network
-        self.net_12 = model.calib_12Net(is_train = False)  
-        self.net_24 = model.calib_24Net(is_train = False)
-        self.net_48 = model.calib_48Net(is_train = False)
+        self.net_12 = model.calib_12Net(is_train = False,size = (sizes[0],sizes[0],3))
+        self.net_24 = model.calib_24Net(is_train = False,size = (sizes[1],sizes[1],3))
+        self.net_48 = model.calib_48Net(is_train = False,size = (sizes[2],sizes[2],3))
         # create session
         self.sess = tf.Session()
         self.restore(model_path)
@@ -74,16 +107,26 @@ class Aligner:
         saver.restore(self.sess, model_path)
         
     def net_12_predict(self,data):
+        # resize data to fit the size of net work
+        input_12 = np.array([cv2.resize(img,(self.sizes[0],self.sizes[0]))for img in data])
+        
         predict = tf.argmax( self.net_12.fc2,1)
-        result = self.sess.run(predict,feed_dict = {self.net_12.inputs : data})
+        result = self.sess.run(predict,feed_dict = {self.net_12.inputs : input_12})
         return result
     def net_24_predict(self,data):
+        # resize data to fit the size of net work
+        input_24 = np.array([cv2.resize(img,(self.sizes[1],self.sizes[1]))for img in data])
+        
+
         predict = tf.argmax( self.net_24.fc2,1)
-        result = self.sess.run(predict,feed_dict = {self.net_24.inputs : data})
+        result = self.sess.run(predict,feed_dict = {self.net_24.inputs : input_24})
         return result
     def net_48_predict(self,data):
+        # resize data to fit the size of net work
+        input_48 = np.array([cv2.resize(img,(self.sizes[2],self.sizes[2]))for img in data])
+        
         predict = tf.argmax( self.net_48.fc2,1)
-        result = self.sess.run(predict,feed_dict = {self.net_48.inputs : data})
+        result = self.sess.run(predict,feed_dict = {self.net_48.inputs : input_48})
         return result
 
 class Detector:
@@ -163,7 +206,7 @@ class Detector:
                 res = self.aligner.net_48_predict(win_buff)
             else:
                 return None
-            cali_scale = [1.17, 1.09, 1.0, 0.9, 0.79]
+            cali_scale = [1.20, 1.09, 1.0, 0.9, 0.82]
             cali_off_x = [0.17, 0., -0.17]
             cali_off_y = [0.17, 0., -0.17]
 
@@ -218,11 +261,12 @@ class Detector:
                 iou,box1_iou,box2_iou = overlap(bbox1,bbox2)
                 bbox1_prop = bbox1[4]
                 bbox2_prop = bbox2[4]
-                if box1_iou > 0.9:
-                    bbox1[4] = 0.0
-                elif box2_iou > 0.9:
-                    bbox2[4] = 0.0
-                elif iou >= iou_thresh:
+                # # inner box threshold
+                # if box1_iou > 0.9:
+                #     bbox1[4] = 0.0
+                # elif box2_iou > 0.9:
+                #     bbox2[4] = 0.0
+                if iou >= iou_thresh:
                     if bbox1_prop <= bbox2_prop:
                         bbox1[4] = 0.0
                     elif bbox1_prop > bbox2_prop:

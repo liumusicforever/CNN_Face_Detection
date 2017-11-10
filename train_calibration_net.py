@@ -2,13 +2,12 @@
 Implementation of "A Convolutional Neural Network Cascade for Face Detection "
 Paper : https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Li_A_Convolutional_Neural_2015_CVPR_paper.pdf
 Author : Dennis Liu
-Modify : 2017/11/04
+Modify : 2017/11/10
 
 Description :   The example of training calibration nets , 
-                I change the size to 48*48 in 12_cal_net and 24_cal_net
-                because of the loss alway not decrease by using original size.
 
 '''
+import cv2
 import numpy as np
 import tensorflow as tf
     
@@ -25,14 +24,14 @@ def train_cal_net():
 
 
     # training configuration
-    batch = 100
+    batch = 500
     size = (48,48,3)
     start_epoch = 0
     end_epoch = 1000
     train_validation_rate = 0.9 # training set / all sample
 
     # load the pretrained model , set None if you don't have
-    pretrained =  'models/48_cal_net_5.ckpt'
+    pretrained =  'models/48_cal_net_18.ckpt'
 
     # load data iterater
     dataset = DataSet(data_info,train_rate = train_validation_rate)
@@ -40,9 +39,9 @@ def train_cal_net():
 
     
     # load network
-    net_12_c = model.calib_12Net(lr = 0.0000005)
-    net_24_c = model.calib_24Net(lr = 0.0000005)
-    net_48_c = model.calib_48Net(lr = 0.0000005)
+    net_12_c = model.calib_12Net(lr = 0.001,size = (12,12,3))  
+    net_24_c = model.calib_24Net(lr = 0.001,size = (24,24,3))  
+    net_48_c = model.calib_48Net(lr = 0.001,size = (48,48,3))  
 
     sess = tf.InteractiveSession()
     saver = tf.train.Saver()
@@ -63,24 +62,23 @@ def train_cal_net():
         while True:
             try:
                 # default of the size returned from data iterator is 48
-                inputs_48,clss ,pattern = sess.run(next_ele)
+                inputs,clss ,pattern = sess.run(next_ele)
                 # <ndarray> , <0/1> , <one-hot of 45-class>
 
 
-                clss = clss.reshape(batch,1)
+                clss = clss.reshape(batch,2)
                 pattern = pattern.reshape(batch,45)
                 
 
-                # resize image into shape of 12,24
-                inputs_12 = inputs_48.copy()
-                inputs_12.resize(batch,12,12,3)
-                inputs_24 = inputs_48.copy()
-                inputs_24.resize(batch,24,24,3)
+                # resize image to fit each net
+                inputs_12 = np.array([cv2.resize(img,(net_12_c.size[0],net_12_c.size[1])) for img in inputs])
+                inputs_24 = np.array([cv2.resize(img,(net_24_c.size[0],net_24_c.size[1])) for img in inputs])
+                inputs_48 = np.array([cv2.resize(img,(net_48_c.size[0],net_48_c.size[1])) for img in inputs])
 
                 '''Put the size(48,48) into 12_cal_net and 24_cal_net ,because of the origrinal size is too small to convergence'''
                 train_nets = [net_12_c,net_24_c,net_48_c]
-                net_feed_dict = {net_12_c.inputs:inputs_48 , net_12_c.targets:pattern,\
-                                net_24_c.inputs:inputs_48 , net_24_c.targets:pattern,\
+                net_feed_dict = {net_12_c.inputs:inputs_12 , net_12_c.targets:pattern,\
+                                net_24_c.inputs:inputs_24 , net_24_c.targets:pattern,\
                                 net_48_c.inputs:inputs_48 , net_48_c.targets:pattern,}
 
                 # training net
@@ -91,9 +89,9 @@ def train_cal_net():
                         feed_dict = net_feed_dict)
 
                 if iteration % 100 == 0:
-                    net_12_c_eva = net_12_c.evaluate(inputs_48,pattern)
+                    net_12_c_eva = net_12_c.evaluate(inputs_12,pattern)
                     net_12_c_acc = sum(net_12_c_eva)/len(net_12_c_eva)
-                    net_24_c_eva = net_24_c.evaluate(inputs_48,pattern)
+                    net_24_c_eva = net_24_c.evaluate(inputs_24,pattern)
                     net_24_c_acc = sum(net_24_c_eva)/len(net_24_c_eva)
                     net_48_c_eva = net_48_c.evaluate(inputs_48,pattern)
                     net_48_c_acc = sum(net_48_c_eva)/len(net_48_c_eva)
@@ -113,19 +111,18 @@ def train_cal_net():
         while True:
             try:
                 # the size returned from data iterator is 48
-                inputs_48,clss ,pattern = sess.run(next_ele)
-                clss = clss.reshape(batch,1)
+                inputs,clss ,pattern = sess.run(next_ele)
+                clss = clss.reshape(batch,2)
                 pattern = pattern.reshape(batch,45)
 
-                #resize image into shape of 12,24,48
-                inputs_12 = inputs_48.copy()
-                inputs_12.resize(batch,12,12,3)
-                inputs_24 = inputs_48.copy()
-                inputs_24.resize(batch,24,24,3)
+                # resize image to fit each net
+                inputs_12 = np.array([cv2.resize(img,(net_12_c.size[0],net_12_c.size[1])) for img in inputs])
+                inputs_24 = np.array([cv2.resize(img,(net_24_c.size[0],net_24_c.size[1])) for img in inputs])
+                inputs_48 = np.array([cv2.resize(img,(net_48_c.size[0],net_48_c.size[1])) for img in inputs])
 
                 
-                net_12_c_eva = net_12_c.evaluate(inputs_48,pattern)
-                net_24_c_eva = net_24_c.evaluate(inputs_48,pattern)
+                net_12_c_eva = net_12_c.evaluate(inputs_12,pattern)
+                net_24_c_eva = net_24_c.evaluate(inputs_24,pattern)
                 net_48_c_eva = net_48_c.evaluate(inputs_48,pattern)
                 for i in range(len(net_12_c_eva)):
                     net_12_c_acc.append(net_12_c_eva[i])
@@ -142,7 +139,7 @@ def train_cal_net():
 
         saver = tf.train.Saver()
         save_path = saver.save(sess, "models/48_cal_net_{}.ckpt".format(epoch))
-        print ("Model saved in file: ".format(save_path)) 
+        print ("Model saved in file: ",save_path) 
 
 if __name__ == "__main__":
     train_cal_net()

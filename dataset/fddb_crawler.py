@@ -2,7 +2,7 @@
 This program use to parsing fddb dataset and generate a trining set of 12,24,48 net
 
 author dennisliu
-modify 2017/11/03
+modify 2017/11/10
 
 please modify the out_path and function name of gen_pos_sample or gen_neg_sample.
 '''
@@ -27,15 +27,32 @@ label_files = [fddb_path+'FDDB-folds/' + txt for txt in \
 'FDDB-fold-09-ellipseList.txt',
 'FDDB-fold-10-ellipseList.txt']]
 
-def parse_data_info(only_positive = False):
+def parse_data_info(only_positive = False,limit_num = None,pos_neg_ratio = 0.5):
     data_info = []
+    pos_num = None
+    neg_num = None
     import os
-    souce_folders = ['/home/share/data/FDDB/positive_sample','/home/share/data/FDDB/negative_sample']
-    if only_positive: souce_folders = souce_folders[:1]
-    
-    for folder in souce_folders:
-        for img in os.listdir(folder):
-            img_path = os.path.join(folder,img)
+    pos_folders = '/home/share/data/FDDB/positive_sample'
+    neg_folders = '/home/share/data/FDDB/negative_sample'
+
+    if limit_num:
+        pos_num = int(limit_num * pos_neg_ratio)
+        neg_num = int(limit_num * (1-pos_neg_ratio))
+        poses = os.listdir(pos_folders)[:pos_num]
+        negs  = os.listdir(neg_folders)[:neg_num]
+    else:
+        poses = os.listdir(pos_folders)
+        negs = os.listdir(neg_folders)
+
+    for img in poses:
+        img_path = os.path.join(pos_folders,img)
+        labels = img.replace('.jpg','').split('_')
+        clss = int(labels[1])
+        pattern = int(labels[2])
+        data_info.append([img_path,[clss,pattern]])
+    if not only_positive:
+        for img in negs:
+            img_path = os.path.join(neg_folders,img)
             labels = img.replace('.jpg','').split('_')
             clss = int(labels[1])
             pattern = int(labels[2])

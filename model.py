@@ -39,10 +39,12 @@ def max_pool(x, kernelSz, stride, pad = 'SAME'):
 #12-net
 class detect_12Net:
     def __init__(self,size = (48,48,3),lr = 0.001 , is_train = True):
+        self.size = size
+
         # data,label
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
-        self.targets = tf.placeholder("float", [None,1])
-
+        self.targets = tf.placeholder("float", [None,2])
+        
         with tf.variable_scope("12det_"):
         
             #conv layer 1
@@ -64,29 +66,31 @@ class detect_12Net:
 
 
             #fully conv layer 2
-            self.w_fc2 = weight_variable([16, 1],'w_fc2',lr_type = 'fc')
-            self.b_fc2 = bias_variable([1],'b_fc2')
+            self.w_fc2 = weight_variable([16, 2],'w_fc2',lr_type = 'fc')
+            self.b_fc2 = bias_variable([2],'b_fc2')
             self.fc2 = tf.matmul(self.fc1,self.w_fc2) + self.b_fc2
         if is_train:
-            self.loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
+            self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
             self.train_step = tf.train.AdamOptimizer(lr).minimize(self.loss)  
     
     def get_fc(self,inputs_12):
         return self.fc1.eval(feed_dict = {self.inputs:inputs_12})
 
     def evaluate(self,inputs_12,targets):
-        predict = tf.to_float(tf.greater(tf.nn.sigmoid(self.fc2),0.5))
-        label   =  targets
+        predict = tf.argmax( self.fc2,1)
+        label   =  tf.argmax(targets,1)
         eva = tf.cast(tf.equal(predict,label),"float").eval(feed_dict = {self.inputs:inputs_12, self.targets:targets})
         return eva
+
 
 #24-net
 class detect_24Net:
     def __init__(self,size = (48,48,3) ,lr = 0.001, is_train = True):
+        self.size = size
 
         # data,label
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
-        self.targets = tf.placeholder("float", [None,1])
+        self.targets = tf.placeholder("float", [None,2])
         # the fc1 from 12net
         self.from_12 = tf.placeholder("float",[None,16])
 
@@ -113,29 +117,31 @@ class detect_24Net:
 
 
             #fully conv layer 2
-            self.w_fc2 = weight_variable([128+16, 1],lr_type = 'fc')
-            self.b_fc2 = bias_variable([1])
+            self.w_fc2 = weight_variable([128+16, 2],lr_type = 'fc')
+            self.b_fc2 = bias_variable([2])
             self.fc2 = tf.matmul(self.concat1,self.w_fc2) + self.b_fc2
             
         if is_train:
-            self.loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
+            self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
             self.train_step = tf.train.AdamOptimizer(lr).minimize(self.loss)   
     
     def get_fc(self,inputs_24,net12_fc):
         return self.concat1.eval(feed_dict = {self.inputs:inputs_24,self.from_12:net12_fc})
     def evaluate(self,inputs_24,targets,net_12_fc):
-        predict = tf.to_float(tf.greater(tf.nn.sigmoid(self.fc2),0.5))
-        label   =  targets
+        predict = tf.argmax( self.fc2,1)
+        label   =  tf.argmax(targets,1)
         eva = tf.cast(tf.equal(predict,label),"float").eval(feed_dict = {self.inputs:inputs_24, self.targets:targets,self.from_12:net_12_fc})
         return eva
+        
         
 #48-net
 class detect_48Net:
     def __init__(self,size = (48,48,3) ,lr = 0.001, is_train = True):
+        self.size = size
         
         # data,label
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
-        self.targets = tf.placeholder("float", [None,1])
+        self.targets = tf.placeholder("float", [None,2])
         # the concat1 from 24net
         self.from_24 = tf.placeholder("float",[None,16+128])
 
@@ -174,23 +180,24 @@ class detect_48Net:
 
 
             #fully conv layer 2
-            self.w_fc2 = weight_variable([256+128+16, 1],lr_type = 'fc')
-            self.b_fc2 = bias_variable([1])
+            self.w_fc2 = weight_variable([256+128+16, 2],lr_type = 'fc')
+            self.b_fc2 = bias_variable([2])
             self.fc2 = tf.matmul(self.concat1,self.w_fc2) + self.b_fc2
         if is_train:
-            self.loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
+            self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
             self.train_step = tf.train.AdamOptimizer(lr).minimize(self.loss)  
     def evaluate(self,inputs_48,targets,net_24_fc):
-        predict = tf.to_float(tf.greater(tf.nn.sigmoid(self.fc2),0.5))
-        label   =  targets
+        predict = tf.argmax( self.fc2,1)
+        label   =  tf.argmax(targets,1)
         eva = tf.cast(tf.equal(predict,label),"float").eval(feed_dict = {self.inputs:inputs_48, self.targets:targets,self.from_24:net_24_fc})
         return eva
 
 
 
 class calib_12Net:
-# notice : change the size of 24 net because of shape(12*12) is too small to predict pattern
     def __init__(self,size = (48,48,3) ,lr = 0.001, is_train = True):
+        self.size = size
+
         # data,label
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
         self.targets = tf.placeholder("float", [None,45])
@@ -225,8 +232,9 @@ class calib_12Net:
         return eva
 
 class calib_24Net:
-    # notice : change the size of 24 net because of shape(24*24) is too small to predict pattern
     def __init__(self,size = (48,48,3) ,lr = 0.001, is_train = True):
+        self.size = size
+
         # data,label
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
         self.targets = tf.placeholder("float", [None,45])
@@ -267,6 +275,7 @@ class calib_24Net:
 class calib_48Net:
 
     def __init__(self,size = (48,48,3) ,lr = 0.001, is_train = True):
+        self.size = size
 
         # data,label
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
