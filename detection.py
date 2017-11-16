@@ -24,7 +24,6 @@ class Classifier:
         self.sizes = sizes
         # load network
         self.net_12 = model.detect_12Net(is_train = False,size = (sizes[0],sizes[0],3))  
-        print '111'
         self.net_24 = model.detect_24Net(is_train = False,size = (sizes[1],sizes[1],3))
         self.net_48 = model.detect_48Net(is_train = False)
         # create session
